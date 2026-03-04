@@ -1,7 +1,5 @@
 # ESP32-S3 Custom Rover
 
-Hi! This is the repository for my custom-built mobile robot. I'm building it from scratch to get away from ready-made toys and Arduino IDE "spaghetti code." I've switched to **PlatformIO** and clean, object-oriented **C++**, with the ultimate goal of using this platform to learn ROS 2 (micro-ROS).
-
 ## Hardware Setup
 The robot uses a standard differential drive setup, but I've put a lot of effort into the electronics:
 * **Brain:** ESP32-S3 (16MB Flash, 8MB PSRAM version) 
