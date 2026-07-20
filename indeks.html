@@ -10,7 +10,8 @@
         .value { font-size: 2em; font-weight: bold; margin-top: 10px; color: #00ff00; }
         .status-dot { height: 15px; width: 15px; background-color: red; border-radius: 50%; display: inline-block; margin-right: 10px; }
         .connected { background-color: #00ff00; box-shadow: 0 0 10px #00ff00; }
-        .controls { grid-column: span 2; font-size: 0.8em; color: #888; }
+        .controls { grid-column: span 2; font-size: 0.9em; color: #888; background: #1a1a1a; padding: 15px; border-radius: 8px;}
+        .action-val { color: #00ccff; }
     </style>
 </head>
 <body>
@@ -21,6 +22,10 @@
         <div class="card">
             <div>AKTUALNY RUCH</div>
             <div id="dir-val" class="value">STOP</div>
+        </div>
+        <div class="card">
+            <div>OSTATNIA AKCJA</div>
+            <div id="action-val" class="value action-val">BRAK</div>
         </div>
         <div class="card">
             <div>MOC SILNIKÓW</div>
@@ -34,15 +39,18 @@
             <div>POBÓR PRĄDU</div>
             <div id="amp-val" class="value" style="color: #ff9900;">Brak czujnika</div>
         </div>
-        <div class="controls card">
-            STEROWANIE: [W] Przód | [S] Tył | [A] Lewo | [D] Prawo | [Q] Boost | Puszczenie klawisza: Stop
+        <div class="controls">
+            <strong>RUCH:</strong> [W] Przód | [S] Tył | [A] Lewo | [D] Prawo | [Q] Boost | Puszczenie: Stop <br><br>
+            <strong>AKCJE (Audio/Serwa):</strong> [U] WALL-E | [I] EVE | [O] WALL-EEEEE | [P] Muzyka
         </div>
     </div>
 
     <script>
-        const ipRobota = "192.168.100.37";
+        const ipRobota = "192.168.100.43"; //M
         let ws;
-        const keys = ['w', 's', 'a', 'd', 'q'];
+        
+        const moveKeys = ['w', 's', 'a', 'd', 'q'];
+        const actionKeys = ['u', 'i', 'o', 'p'];
 
         function connect() {
             ws = new WebSocket(`ws://${ipRobota}:81/`);
@@ -70,7 +78,7 @@
         connect();
 
         document.addEventListener('keydown', (event) => {
-            if (event.repeat) return; 
+            if (event.repeat) return;
             let key = event.key.toLowerCase();
             
             if (key === 'w') ws.send('Forward');
@@ -78,11 +86,16 @@
             if (key === 'a') ws.send('Left');
             if (key === 'd') ws.send('Right');
             if (key === 'q') ws.send('Boost');
+
+            if (key === 'u') { ws.send('Action1'); document.getElementById('action-val').innerText = "AUDIO 1"; }
+            if (key === 'i') { ws.send('Action2'); document.getElementById('action-val').innerText = "AUDIO 2"; }
+            if (key === 'o') { ws.send('Action3'); document.getElementById('action-val').innerText = "AUDIO 3"; }
+            if (key === 'p') { ws.send('Action4'); document.getElementById('action-val').innerText = "AUDIO 4"; }
         });
 
         document.addEventListener('keyup', (event) => {
             let key = event.key.toLowerCase();
-            if (keys.includes(key)) {
+            if (moveKeys.includes(key)) {
                 ws.send('Stop');
             }
         });
