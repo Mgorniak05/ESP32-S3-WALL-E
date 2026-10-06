@@ -28,9 +28,6 @@ AudioPlayer walleAudio(BCLK, LRC, DIN);
 Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver(0x60);
 MotorController robot(PWMA_MOTOR, AN1_MOTOR, AN2_MOTOR, PWMB_MOTOR, BN1_MOTOR, BN2_MOTOR);
 
-#define SERVOMIN_US 700  
-#define SERVOMAX_US 2300
-
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length) {
     switch(type) {
         case WStype_DISCONNECTED:
@@ -43,21 +40,40 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
             }
             break;
         case WStype_TEXT:
-            String komenda = String((char*)payload);
+            String command = String((char*)payload);
             Serial.print("Otrzymano komendę z WWW: ");
-            Serial.println(komenda);
+            Serial.println(command);
 
-            if (komenda == "Action1") {
+            if (command == "Action1") {
                 walleAudio.play("/1_WALL-E.mp3"); 
             } 
-            else if (komenda == "Action2") {
+            else if (command == "Action2") {
                 walleAudio.play("/2_EEEEE-VA.mp3");
             } 
-            else if (komenda == "Action3") {
+            else if (command == "Action3") {
                 walleAudio.play("/3_WALL-EEEEE.mp3");
             } 
-            else if (komenda == "Action4") {
+            else if (command == "Action4") {
                 walleAudio.play("/4_Hello Dolly.mp3");
+            }
+            else if (command == "Backward") {
+                robot.goBack(128);
+            }
+            else if (command == "Forward") {
+                robot.goForward(128);
+            }
+            else if (command == "Left") {
+                robot.turnLeft(128);
+            }
+            else if (command == "Right") {
+                robot.turnRight(128);
+            }
+            else if (command == "Stop") {
+                robot.stop();
+            }
+            else {
+                Serial.println("Nieznana komenda!");
+                
             }
             
             break;
