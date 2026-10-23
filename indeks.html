@@ -1,19 +1,95 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Rover Telemetry</title>
     <style>
-        body { font-family: 'Courier New', Courier, monospace; background-color: #121212; color: #00ff00; text-align: center; margin: 0; padding: 20px; }
-        h1 { color: #ffffff; }
-        .dashboard { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; max-width: 800px; margin: 0 auto; }
-        .card { background: #1e1e1e; border: 1px solid #333; border-radius: 8px; padding: 20px; box-shadow: 0 4px 8px rgba(0,255,0,0.1); }
-        .value { font-size: 2em; font-weight: bold; margin-top: 10px; color: #00ff00; }
-        .status-dot { height: 15px; width: 15px; background-color: red; border-radius: 50%; display: inline-block; margin-right: 10px; }
-        .connected { background-color: #00ff00; box-shadow: 0 0 10px #00ff00; }
-        .controls { grid-column: span 2; font-size: 0.9em; color: #888; background: #1a1a1a; padding: 15px; border-radius: 8px;}
-        .action-val { color: #00ccff; }
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #121212;
+            color: #00ff00;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #ffffff;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: #1e1e1e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 255, 0, 0.1);
+        }
+
+        .value {
+            font-size: 2em;
+            font-weight: bold;
+            margin-top: 10px;
+            color: #00ff00;
+        }
+
+        .status-dot {
+            height: 15px;
+            width: 15px;
+            background-color: red;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 10px;
+        }
+
+        .connected {
+            background-color: #00ff00;
+            box-shadow: 0 0 10px #00ff00;
+        }
+
+        .controls {
+            grid-column: span 2;
+            font-size: 0.9em;
+            color: #888;
+            background: #1a1a1a;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .action-val {
+            color: #00ccff;
+        }
+
+        .console {
+            background: #000;
+            border: 1px solid #333;
+            height: 110px;
+            overflow-y: auto;
+            text-align: left;
+            padding: 8px;
+            font-size: 0.8em;
+            color: #00ff66;
+            margin-bottom: 10px;
+            font-family: monospace;
+        }
+
+        .pwr-footer {
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+            font-size: 1.1em;
+            color: #ff9900;
+        }
     </style>
 </head>
+
 <body>
     <h1>Rover Command Center</h1>
     <p><span id="status-dot" class="status-dot"></span><span id="status-text">Rozłączony</span></p>
@@ -27,50 +103,65 @@
             <div>OSTATNIA AKCJA</div>
             <div id="action-val" class="value action-val">BRAK</div>
         </div>
-        <div class="card">
-            <div>MOC SILNIKÓW</div>
-            <div id="pwr-val" class="value">0%</div>
-        </div>
-        <div class="card">
-            <div>NAPIĘCIE BATERII (2S)</div>
-            <div id="bat-val" class="value" style="color: #ff9900;">Brak czujnika</div>
-        </div>
-        <div class="card">
-            <div>POBÓR PRĄDU</div>
-            <div id="amp-val" class="value" style="color: #ff9900;">Brak czujnika</div>
+        <div class="card" style="grid-column: span 2;">
+            <div style="margin-bottom: 8px;">SYSTEM MONITOR & POWER</div>
+            <div id="sys-log" class="console">
+                <div>> System ready. Waiting for link...</div>
+            </div>
+            <div class="pwr-footer">
+                <span>VOLTS: <span id="v-val" style="color: #fff;">--</span> V</span>
+                <span>AMPERS: <span id="a-val" style="color: #fff;">--</span> mA</span>
+            </div>
         </div>
         <div class="controls">
-            <strong>RUCH:</strong> [W] Przód | [S] Tył | [A] Lewo | [D] Prawo | [Q] Boost | Puszczenie: Stop <br><br>
-            <strong>AKCJE (Audio/Serwa):</strong> [U] WALL-E | [I] EVE | [O] WALL-EEEEE | [P] Muzyka
+            <strong>RUCH:</strong> [W] Przód | [S] Tył | [A] Lewo | [D] Prawo | Puszczenie: Stop <br><br>
+            <strong>SERWA:</strong> [1-7] Wybór stawu | [Q] Lewo | [E] Prawo | [C] Wyśrodkuj <br><br>
+            <strong>AUDIO:</strong> [U] WALL-E | [I] EVE | [O] WALL-EEEEE | [P] Muzyka
         </div>
     </div>
 
     <script>
-        const ipRobota = "192.168.100.43"; //M
+        const ipRobota = "192.168.100.123"; //M
         let ws;
-        
-        const moveKeys = ['w', 's', 'a', 'd', 'q'];
+
+        const moveKeys = ['w', 's', 'a', 'd'];
         const actionKeys = ['u', 'i', 'o', 'p'];
+        const servoKeys = ['q', 'e', 'c', '1', '2', '3', '4', '5', '6', '7'];
 
         function connect() {
             ws = new WebSocket(`ws://${ipRobota}:81/`);
-            
+
             ws.onopen = () => {
                 document.getElementById('status-text').innerText = "POŁĄCZONY";
                 document.getElementById('status-dot').classList.add('connected');
             };
-            
+
             ws.onclose = () => {
                 document.getElementById('status-text').innerText = "ROZŁĄCZONY";
                 document.getElementById('status-dot').classList.remove('connected');
-                setTimeout(connect, 1000); 
+                setTimeout(connect, 1000);
             };
-            
+
             ws.onmessage = (event) => {
-                let dane = event.data.split(',');
-                if(dane.length === 2) {
-                    document.getElementById('dir-val').innerText = dane[0];
-                    document.getElementById('pwr-val').innerText = dane[1] + '%';
+                let msg = event.data;
+
+                if (msg.startsWith("LOG:")) {
+                    let logBox = document.getElementById('sys-log');
+                    let line = document.createElement('div');
+                    line.innerText = "> " + msg.substring(4);
+                    logBox.appendChild(line);
+                    logBox.scrollTop = logBox.scrollHeight;
+                }
+                else if (msg.startsWith("TELE,")) {
+                    let parts = msg.split(',');
+                    if (parts.length === 3) {
+                        document.getElementById('v-val').innerText = parseFloat(parts[1]).toFixed(2);
+                        document.getElementById('a-val').innerText = parseFloat(parts[2]).toFixed(0);
+                    }
+                }
+                else if (msg.startsWith("DIR,")) {
+                    let parts = msg.split(',');
+                    document.getElementById('dir-val').innerText = parts[1];
                 }
             };
         }
@@ -80,17 +171,27 @@
         document.addEventListener('keydown', (event) => {
             if (event.repeat) return;
             let key = event.key.toLowerCase();
-            
+
             if (key === 'w') ws.send('Forward');
             if (key === 's') ws.send('Backward');
             if (key === 'a') ws.send('Left');
             if (key === 'd') ws.send('Right');
-            if (key === 'q') ws.send('Boost');
 
             if (key === 'u') { ws.send('Action1'); document.getElementById('action-val').innerText = "AUDIO 1"; }
             if (key === 'i') { ws.send('Action2'); document.getElementById('action-val').innerText = "AUDIO 2"; }
             if (key === 'o') { ws.send('Action3'); document.getElementById('action-val').innerText = "AUDIO 3"; }
             if (key === 'p') { ws.send('Action4'); document.getElementById('action-val').innerText = "AUDIO 4"; }
+
+            if (key === 'q') ws.send('ServoLeft');
+            if (key === 'e') ws.send('ServoRight');
+            if (key === 'c') ws.send('ServoCenter');
+            if (key === '1') ws.send('Servo1');
+            if (key === '2') ws.send('Servo2');
+            if (key === '3') ws.send('Servo3');
+            if (key === '4') ws.send('Servo4');
+            if (key === '5') ws.send('Servo5');
+            if (key === '6') ws.send('Servo6');
+            if (key === '7') ws.send('Servo7');
         });
 
         document.addEventListener('keyup', (event) => {
@@ -98,7 +199,12 @@
             if (moveKeys.includes(key)) {
                 ws.send('Stop');
             }
+
+            if (servoKeys.includes(key)) {
+                ws.send('ServoStop');
+            }
         });
     </script>
 </body>
+
 </html>
