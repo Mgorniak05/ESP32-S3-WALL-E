@@ -87,21 +87,32 @@
             font-size: 1.1em;
             color: #ff9900;
         }
+        .camera-box { 
+            grid-column: span 2; 
+            background: #000; 
+            border: 1px solid #333; 
+            border-radius: 8px; 
+            overflow: hidden; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 240px; 
+        }
     </style>
 </head>
 
 <body>
     <h1>Rover Command Center</h1>
-    <p><span id="status-dot" class="status-dot"></span><span id="status-text">Rozłączony</span></p>
+    <p><span id="status-dot" class="status-dot"></span><span id="status-text">Disconnected</span></p>
 
     <div class="dashboard">
         <div class="card">
-            <div>AKTUALNY RUCH</div>
+            <div>Current Movement</div>
             <div id="dir-val" class="value">STOP</div>
         </div>
         <div class="card">
-            <div>OSTATNIA AKCJA</div>
-            <div id="action-val" class="value action-val">BRAK</div>
+            <div>LAST ACTION</div>
+            <div id="action-val" class="value action-val">NONE</div>
         </div>
         <div class="card" style="grid-column: span 2;">
             <div style="margin-bottom: 8px;">SYSTEM MONITOR & POWER</div>
@@ -114,35 +125,53 @@
             </div>
         </div>
         <div class="controls">
-            <strong>RUCH:</strong> [W] Przód | [S] Tył | [A] Lewo | [D] Prawo | Puszczenie: Stop <br><br>
-            <strong>SERWA:</strong> [1-7] Wybór stawu | [Q] Lewo | [E] Prawo | [C] Wyśrodkuj <br><br>
-            <strong>AUDIO:</strong> [U] WALL-E | [I] EVE | [O] WALL-EEEEE | [P] Muzyka
+            <strong>MOVEMENT:</strong> [W] Forward | [S] Backward | [A] Left | [D] Right | Default: Stop <br><br>
+            <strong>SERVO:</strong> [1-7] Choose servo | [Q] Left | [E] Right | [C] Center <br><br>
+            <strong>AUDIO:</strong> [U] WALL-E | [I] EVE | [O] WALL-EEEEE | [P] Music<br><br>
+            <strong>CAMERA:</strong> [z] Take Picture
+
+        </div>
+        <div class="camera-box">
+            <img id="stream" src="" alt="Waiting for image from robot..." style="width: 100%; height: auto;">
         </div>
     </div>
 
     <script>
-        const ipRobota = "192.168.100.123"; //M
+        const ipRobot = "192.168.100.43"; //M
         let ws;
 
         const moveKeys = ['w', 's', 'a', 'd'];
         const actionKeys = ['u', 'i', 'o', 'p'];
         const servoKeys = ['q', 'e', 'c', '1', '2', '3', '4', '5', '6', '7'];
+        const cameraKeys = ['z'];
 
         function connect() {
-            ws = new WebSocket(`ws://${ipRobota}:81/`);
+            ws = new WebSocket(`ws://${ipRobot}:81/`);
+            ws.binaryType = 'blob';
 
             ws.onopen = () => {
-                document.getElementById('status-text').innerText = "POŁĄCZONY";
+                document.getElementById('status-text').innerText = "CONNECTED";
                 document.getElementById('status-dot').classList.add('connected');
             };
 
             ws.onclose = () => {
-                document.getElementById('status-text').innerText = "ROZŁĄCZONY";
+                document.getElementById('status-text').innerText = "DISCONNECTED";
                 document.getElementById('status-dot').classList.remove('connected');
                 setTimeout(connect, 1000);
             };
 
             ws.onmessage = (event) => {
+                if (event.data instanceof Blob) {
+                    const imgUrl = URL.createObjectURL(event.data);
+                    const imgElement = document.getElementById('stream');
+                    imgElement.src = imgUrl;
+
+                    imgElement.onload = () => { 
+                        URL.revokeObjectURL(imgUrl); 
+                    };
+                    return; 
+                }
+
                 let msg = event.data;
 
                 if (msg.startsWith("LOG:")) {
@@ -192,6 +221,8 @@
             if (key === '5') ws.send('Servo5');
             if (key === '6') ws.send('Servo6');
             if (key === '7') ws.send('Servo7');
+
+            if (key === 'z') ws.send('TakePicture');
         });
 
         document.addEventListener('keyup', (event) => {

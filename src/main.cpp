@@ -8,6 +8,7 @@
 #include <LittleFS.h>
 #include "AudioPlayer.h"
 #include <Adafruit_INA219.h>
+#include "CameraManager.h"
 
 #define I2C_SDA 21
 #define I2C_SCL 47
@@ -37,6 +38,7 @@ WebSocketsServer webSocket = WebSocketsServer(81);
 AudioPlayer walleAudio(BCLK, LRC, DIN);
 Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver(0x60);
 MotorController robot(PWMA_MOTOR, AN1_MOTOR, AN2_MOTOR, PWMB_MOTOR, BN1_MOTOR, BN2_MOTOR);
+CameraManager robotCamera;
 
 int servoDirection = 0;
 unsigned long lastServoUpdate = 0;
@@ -60,7 +62,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
     break;
     case WStype_TEXT:
         String command = String((char *)payload);
-        Serial.print("Otrzymano komendę z WWW: ");
+        Serial.print("Received command from WWW: ");
         Serial.println(command);
         webSocket.broadcastTXT("LOG:CMD -> " + command);
 
@@ -104,6 +106,13 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
             robot.turnRight(128);
             webSocket.broadcastTXT("DIR, RIGHT");
         }
+        else if (command == "TakePicture")
+        {
+            robot.stop();
+            webSocket.broadcastTXT("LOG:Taking picture");
+            robotCamera.sendSingleFrame(webSocket, num); 
+            webSocket.broadcastTXT("LOG:Picture sent to client");
+        }
         else if (command == "Stop")
         {
             robot.stop();
@@ -115,7 +124,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
             if (val >= 1 && val <= 7)
             {
                 whichServo = val;
-                Serial.printf("Wybrano serwo nr: %d\n", whichServo);
+                Serial.printf("Selected servo nr: %d\n", whichServo);
                 webSocket.broadcastTXT("LOG:SERVO " + String(whichServo) + " SELECTED");
             }
         }
@@ -180,6 +189,7 @@ void setup()
         Serial.print(".");
     }
     Serial.println("\nConnected!");
+    robotCamera.begin();
 
     if (!ina219.begin())
     {
