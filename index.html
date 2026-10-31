@@ -137,13 +137,14 @@
     </div>
 
     <script>
-        const ipRobot = "192.168.100.43"; //M
+        const ipRobot = "192.168.100.123"; //M
         let ws;
 
         const moveKeys = ['w', 's', 'a', 'd'];
         const actionKeys = ['u', 'i', 'o', 'p'];
         const servoKeys = ['q', 'e', 'c', '1', '2', '3', '4', '5', '6', '7'];
         const cameraKeys = ['z'];
+        const comboKeys = ['h', 'j', 'k', 'l'];
 
         function connect() {
             ws = new WebSocket(`ws://${ipRobot}:81/`);
@@ -223,6 +224,11 @@
             if (key === '7') ws.send('Servo7');
 
             if (key === 'z') ws.send('TakePicture');
+
+            if (key === 'h') ws.send('Combo1');
+            if (key === 'j') ws.send('Combo2');
+            if (key === 'k') ws.send('Combo3');
+            if (key === 'l') ws.send('Combo4');
         });
 
         document.addEventListener('keyup', (event) => {

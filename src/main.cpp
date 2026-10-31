@@ -9,6 +9,8 @@
 #include "AudioPlayer.h"
 #include <Adafruit_INA219.h>
 #include "CameraManager.h"
+#include "ServoController.h"
+#include "ComboController.h"
 
 #define I2C_SDA 21
 #define I2C_SCL 47
@@ -36,9 +38,10 @@
 Adafruit_INA219 ina219;
 WebSocketsServer webSocket = WebSocketsServer(81);
 AudioPlayer walleAudio(BCLK, LRC, DIN);
-Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver(0x60);
 MotorController robot(PWMA_MOTOR, AN1_MOTOR, AN2_MOTOR, PWMB_MOTOR, BN1_MOTOR, BN2_MOTOR);
 CameraManager robotCamera;
+ServoController robotServos;
+ComboController robotCombos(&robot, &walleAudio, &robotServos, &webSocket);
 
 int servoDirection = 0;
 unsigned long lastServoUpdate = 0;
@@ -46,6 +49,18 @@ const int SERVO_PORTS[7] = {ARM_L_PORT, ARM_R_PORT, NECK_1_PORT, NECK_2_PORT, NE
 int currentPos[7] = {307, 307, 307, 307, 307, 307, 307};
 int whichServo = 1;
 unsigned long lastTelemetry = 0;
+unsigned long comboTimer = 0;
+
+bool comboActive1 = false;
+bool comboActive2 = false;
+bool comboActive3 = false;
+bool comboActive4 = false;
+bool comboLeftDone = false;
+bool comboRightDone = false;
+bool comboForwardDone = false;
+bool comboBackwardDone = false;
+bool comboServoDone = false;
+int servoPhase = 0;
 
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
 {
@@ -130,26 +145,28 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
         }
         else if (command == "ServoLeft")
         {
-            servoDirection = -1;
+            robotServos.setDirection(whichServo - 1, -1);
             webSocket.broadcastTXT("LOG:Q PRESSED");
         }
         else if (command == "ServoRight")
         {
-            servoDirection = 1;
+            robotServos.setDirection(whichServo - 1, 1);
             webSocket.broadcastTXT("LOG:E PRESSED");
         }
         else if (command == "ServoStop")
         {
-            servoDirection = 0;
+            robotServos.setDirection(whichServo - 1, 0);
             webSocket.broadcastTXT("LOG:SERVO STOPPED");
         }
         else if (command == "ServoCenter")
         {
-            int idx = whichServo - 1;
-            currentPos[idx] = 307;
-            pwm.setPWM(SERVO_PORTS[idx], 0, 307);
+            robotServos.setTarget(whichServo - 1, 307);
             webSocket.broadcastTXT("LOG:SERVO " + String(whichServo) + " CENTERED");
         }
+        else if (command == "Combo1") robotCombos.startCombo(1);
+        else if (command == "Combo2") robotCombos.startCombo(2);
+        else if (command == "Combo3") robotCombos.startCombo(3);
+        else if (command == "Combo4") robotCombos.startCombo(4);
         else
         {
             Serial.println("Unknown command!");
@@ -166,9 +183,7 @@ void setup()
     Wire.begin(I2C_SDA, I2C_SCL);
     Wire.setTimeOut(50);
 
-    pwm.begin();
-    pwm.setOscillatorFrequency(27000000);
-    pwm.setPWMFreq(50);
+    robotServos.begin();
     Serial.println("Servo driver initialized.");
 
     robot.begin();
@@ -220,20 +235,8 @@ void loop()
 {
     walleAudio.loop();
     webSocket.loop();
-    if (servoDirection != 0 && (millis() - lastServoUpdate > 20))
-    {
-        lastServoUpdate = millis();
-
-        int idx = whichServo - 1;
-        currentPos[idx] += servoDirection;
-
-        if (currentPos[idx] < 50)
-            currentPos[idx] = 50;
-        if (currentPos[idx] > 600)
-            currentPos[idx] = 600;
-
-        pwm.setPWM(SERVO_PORTS[idx], 0, currentPos[idx]);
-    }
+    robotServos.update();
+    robotCombos.update();
 
     if (millis() - lastTelemetry > 1000)
     {
