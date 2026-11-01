@@ -1,39 +1,68 @@
 #include "CameraManager.h"
 
-bool CameraManager::begin() {
+CameraManager::CameraManager()
+{
+    memset(&config, 0, sizeof(camera_config_t));
     camera_config_t c;
-    c.ledc_channel = LEDC_CHANNEL_0; 
-    c.ledc_timer = LEDC_TIMER_0;
-    c.pin_d0 = 11; c.pin_d1 = 9;  c.pin_d2 = 8;  c.pin_d3 = 10;
-    c.pin_d4 = 12; c.pin_d5 = 18; c.pin_d6 = 17; c.pin_d7 = 16;
-    c.pin_xclk = 15; c.pin_pclk = 13; c.pin_vsync = 6; c.pin_href = 7;
-    c.pin_sccb_sda = 4; c.pin_sccb_scl = 5; 
-    c.pin_pwdn = -1; c.pin_reset = -1;
-    c.xclk_freq_hz = 10000000;
-    c.pixel_format = PIXFORMAT_JPEG;
-    c.frame_size = FRAMESIZE_QVGA; 
-    c.jpeg_quality = 20; 
-    c.fb_count = 1;
-    c.fb_location = CAMERA_FB_IN_PSRAM;
-
-    if (esp_camera_init(&c) != ESP_OK) {
-        Serial.println("Camera initialization error!");
-        return false;
-    }
-    return true;
+    config.ledc_channel = LEDC_CHANNEL_0;
+    config.ledc_timer = LEDC_TIMER_0;
+    config.pin_d0 = 11;
+    config.pin_d1 = 9;
+    config.pin_d2 = 8;
+    config.pin_d3 = 10;
+    config.pin_d4 = 12;
+    config.pin_d5 = 18;
+    config.pin_d6 = 17;
+    config.pin_d7 = 16;
+    config.pin_xclk = 15;
+    config.pin_pclk = 13;
+    config.pin_vsync = 6;
+    config.pin_href = 7;
+    config.pin_sccb_sda = 4;
+    config.pin_sccb_scl = 5;
+    config.pin_pwdn = -1;
+    config.pin_reset = -1;
+    config.xclk_freq_hz = 10000000;
+    config.pixel_format = PIXFORMAT_JPEG;
+    config.frame_size = FRAMESIZE_SVGA;
+    config.jpeg_quality = 12;
+    config.fb_count = 1;
+    config.fb_location = CAMERA_FB_IN_PSRAM;
+    config.grab_mode = CAMERA_GRAB_WHEN_EMPTY;
 }
 
-void CameraManager::sendSingleFrame(WebSocketsServer& ws, uint8_t client_num) {
-    camera_fb_t *fb = esp_camera_fb_get();
-    if (fb) {
-        esp_camera_fb_return(fb); 
+void CameraManager::sendSingleFrame(WebSocketsServer &ws, uint8_t client_num)
+{
+    ws.sendTXT(client_num, "LOG:Waking up camera...");
+
+    if (esp_camera_init(&config) != ESP_OK)
+    {
+        ws.sendTXT(client_num, "LOG:Camera init error!");
+        return;
     }
 
-    fb = esp_camera_fb_get();
-    if (fb) {
+    for (int i = 0; i < 2; i++)
+    {
+        camera_fb_t *fb_dummy = esp_camera_fb_get();
+        if (fb_dummy)
+        {
+            esp_camera_fb_return(fb_dummy);
+        }
+        delay(40);
+    }
+
+    camera_fb_t *fb = esp_camera_fb_get();
+    if (fb)
+    {
         ws.sendBIN(client_num, fb->buf, fb->len);
         esp_camera_fb_return(fb);
-    } else {
-        ws.sendTXT(client_num, "LOG:Camera error- empty frame!");
+        ws.sendTXT(client_num, "LOG:Picture sent to client");
     }
+    else
+    {
+        ws.sendTXT(client_num, "LOG:Camera error - empty frame!");
+    }
+
+    esp_camera_deinit();
+    ws.sendTXT(client_num, "LOG:Camera sleeping");
 }

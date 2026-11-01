@@ -61,6 +61,8 @@ bool comboForwardDone = false;
 bool comboBackwardDone = false;
 bool comboServoDone = false;
 int servoPhase = 0;
+bool pendingPicture = false;
+uint8_t pictureClientNum = 0;
 
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
 {
@@ -103,12 +105,12 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
         }
         else if (command == "Forward")
         {
-            robot.goBack(200);
+            robot.goBack(128);
             webSocket.broadcastTXT("DIR, FORWARD");
         }
         else if (command == "Backward")
         {
-            robot.goForward(182);
+            robot.goForward(150);
             webSocket.broadcastTXT("DIR, BACKWARD");
         }
         else if (command == "Left")
@@ -124,9 +126,9 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
         else if (command == "TakePicture")
         {
             robot.stop();
-            webSocket.broadcastTXT("LOG:Taking picture");
-            robotCamera.sendSingleFrame(webSocket, num); 
-            webSocket.broadcastTXT("LOG:Picture sent to client");
+            pendingPicture = true;
+            pictureClientNum = num;
+            webSocket.broadcastTXT("LOG:Triggering picture...");
         }
         else if (command == "Stop")
         {
@@ -204,7 +206,6 @@ void setup()
         Serial.print(".");
     }
     Serial.println("\nConnected!");
-    robotCamera.begin();
 
     if (!ina219.begin())
     {
@@ -237,6 +238,12 @@ void loop()
     webSocket.loop();
     robotServos.update();
     robotCombos.update();
+
+    if (pendingPicture)
+    {
+        pendingPicture = false;
+        robotCamera.sendSingleFrame(webSocket, pictureClientNum);
+    }
 
     if (millis() - lastTelemetry > 1000)
     {

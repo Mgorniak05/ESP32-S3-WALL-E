@@ -6,8 +6,12 @@
 #include <WebSocketsServer.h>
 
 class CameraManager {
+
+private:
+    camera_config_t config;
+
 public:
-    bool begin();
+    CameraManager();
     void sendSingleFrame(WebSocketsServer& ws, uint8_t client_num);
 };
 
