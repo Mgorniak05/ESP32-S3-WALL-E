@@ -15,7 +15,7 @@ private:
     WebSocketsServer* ws;
 
     int activeCombo;
-    
+    int comboLoopCount;
     int servoStep;
     unsigned long servoTimer;
     

@@ -4,8 +4,8 @@
 #define ARM_R 1
 #define NECK_UD 2
 #define NECK_LR 4
-#define TIME_TURN_360 3200
-#define TIME_DRIVE_4 1500
+#define TIME_TURN_360 10000
+#define TIME_DRIVE_4 2000
 
 ComboController::ComboController(MotorController *r, AudioPlayer *a, ServoController *s, WebSocketsServer *w)
 {
@@ -46,6 +46,7 @@ void ComboController::startCombo(int comboId)
     motorStep = 0;
     servoTimer = millis();
     motorTimer = millis();
+    comboLoopCount = 0;
 
     ws->broadcastTXT("LOG:START COMBO " + String(comboId));
 
@@ -73,7 +74,7 @@ void ComboController::update()
         case 0:
             if (now - servoTimer >= 600)
             {
-                servos->setTarget(ARM_L, 200);
+                servos->setTarget(ARM_L, 250);
                 servoTimer = now;
                 servoStep = 1;
             }
@@ -110,7 +111,7 @@ void ComboController::update()
         case 0:
             if (now - servoTimer >= 600)
             {
-                servos->setTarget(NECK_UD, 265);
+                servos->setTarget(NECK_UD, 275);
                 servoTimer = now;
                 servoStep = 1;
             }
@@ -134,7 +135,7 @@ void ComboController::update()
         case 3:
             if (now - servoTimer >= 800)
             {
-                servos->setTarget(NECK_LR, 250);
+                servos->setTarget(NECK_LR, 140);
                 servoTimer = now;
                 servoStep = 4;
             }
@@ -142,7 +143,7 @@ void ComboController::update()
         case 4:
             if (now - servoTimer >= 1000)
             {
-                servos->setTarget(NECK_LR, 365);
+                servos->setTarget(NECK_LR, 325);
                 servoTimer = now;
                 servoStep = 5;
             }
@@ -171,9 +172,9 @@ void ComboController::update()
         case 0:
             if (now - servoTimer >= 600)
             {
-                servos->setTarget(ARM_L, 210);
+                servos->setTarget(ARM_L, 250);
                 servos->setTarget(NECK_UD, 265);
-                servos->setTarget(NECK_LR, 255);
+                servos->setTarget(NECK_LR, 140);
                 servoTimer = now;
                 servoStep = 1;
             }
@@ -183,7 +184,7 @@ void ComboController::update()
             {
                 servos->setTarget(ARM_L, 400);
                 servos->setTarget(NECK_UD, 350);
-                servos->setTarget(NECK_LR, 360);
+                servos->setTarget(NECK_LR, 325);
                 servoTimer = now;
                 servoStep = 2;
             }
@@ -212,7 +213,7 @@ void ComboController::update()
         case 0:
             if (now - motorTimer >= 800)
             {
-                robot->goBack(200);
+                robot->goBack(128);
                 motorTimer = now;
                 motorStep = 1;
             }
@@ -226,9 +227,9 @@ void ComboController::update()
             }
             break;
         case 2:
-            if (now - motorTimer >= 800)
+            if (now - motorTimer >= 1300)
             {
-                robot->goForward(182);
+                robot->goForward(105);
                 motorTimer = now;
                 motorStep = 3;
             }
@@ -242,7 +243,7 @@ void ComboController::update()
             }
             break;
         case 4:
-            if (now - motorTimer >= 800)
+            if (now - motorTimer >= 1000)
             {
                 robot->turnRight(128);
                 motorTimer = now;
@@ -258,7 +259,7 @@ void ComboController::update()
             }
             break;
         case 6:
-            if (now - motorTimer >= 800)
+            if (now - motorTimer >= 1400)
             {
                 robot->turnLeft(128);
                 motorTimer = now;
@@ -270,7 +271,16 @@ void ComboController::update()
             {
                 robot->stop();
                 motorTimer = now;
-                motorStep = 8;
+                comboLoopCount++;
+
+                if (comboLoopCount < 2)
+                {
+                    motorStep = 0;
+                }
+                else
+                {
+                    motorStep = 8;
+                }
             }
             break;
         case 8:
@@ -285,11 +295,10 @@ void ComboController::update()
         switch (servoStep)
         {
         case 0:
-            if (now - servoTimer >= 1200)
+            if (now - servoTimer >= 1100)
             {
-                servos->setTarget(NECK_UD, 270);
-                servos->setTarget(ARM_L, 250);
-                servos->setTarget(ARM_R, 360);
+                servos->setTarget(ARM_L, 260);
+                servos->setTarget(ARM_R, 350);
                 servoTimer = now;
                 servoStep = 1;
             }
@@ -297,9 +306,12 @@ void ComboController::update()
         case 1:
             if (now - servoTimer >= 1300)
             {
-                servos->setTarget(NECK_LR, 255);
                 servos->setTarget(ARM_L, 360);
                 servos->setTarget(ARM_R, 250);
+                if (motorStep >= 4)
+                {
+                    servos->setTarget(NECK_LR, 350);
+                }
                 servoTimer = now;
                 servoStep = 2;
             }
@@ -307,7 +319,6 @@ void ComboController::update()
         case 2:
             if (now - servoTimer >= 1300)
             {
-                servos->setTarget(NECK_UD, 345);
                 servos->setTarget(NECK_LR, 360);
                 servoTimer = now;
                 servoStep = 3;
